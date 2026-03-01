@@ -616,7 +616,7 @@
             gameMode = mode;
             document.getElementById('startPage').style.display = 'none';
             document.getElementById('gamePage').style.display = 'block';
-            
+
             if (mode === 'normal') {
                 moveCount = { [BLACK]: 3, [WHITE]: 3 };
                 document.getElementById('modeInfo').textContent = '基础模式 - 黑方先行';
@@ -625,9 +625,8 @@
                 moveCount = { [BLACK]: 3, [WHITE]: 3 };
                 document.getElementById('modeInfo').textContent = '💣 恶心模式 - 黑方先行';
                 document.getElementById('mineInfo').style.display = 'block';
-                initMines();
             }
-            
+
             initBoard();
             updateMoveInfo();
         }
