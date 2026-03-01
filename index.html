@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋 - 双人对战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* 开始页面样式 */
+        .start-page {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .start-title {
+            font-size: 48px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .start-subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .mode-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .mode-card {
+            padding: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            text-align: left;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .mode-card.normal {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .mode-card.crazy {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            color: white;
+        }
+
+        .mode-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .mode-desc {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        /* 游戏页面样式 */
+        .game-page {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            display: none;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f0f0f0;
+        }
+
+        .status.black-turn {
+            background: #333;
+            color: white;
+        }
+
+        .status.white-turn {
+            background: #fff;
+            color: #333;
+            border: 2px solid #999;
+        }
+
+        .status.move-mode {
+            background: #ff9800;
+            color: white;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .status.winner {
+            background: #ffd700;
+            color: #333;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .status.explosion {
+            background: #ff0000;
+            color: white;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .board {
+            background: #e8c178;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            gap: 0;
+            background: #e8c178;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #8b6914;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .cell.disabled {
+            cursor: not-allowed;
+        }
+
+        .cell.disabled:hover {
+            background: transparent;
+        }
+
+        .cell.selectable {
+            cursor: pointer;
+        }
+
+        .cell.selected {
+            background: rgba(255, 165, 0, 0.4);
+        }
+
+        .cell.move-target {
+            background: rgba(0, 255, 0, 0.3);
+        }
+
+        .cell.exploded {
+            animation: explodeCell 0.5s ease-out;
+        }
+
+        @keyframes explodeCell {
+            0% { transform: scale(1); background: #ff0000; }
+            50% { transform: scale(1.5); background: #ff6600; }
+            100% { transform: scale(1); background: rgba(0, 0, 0, 0.1); }
+        }
+
+        .stone {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            animation: dropStone 0.2s ease-out;
+        }
+
+        @keyframes dropStone {
+            from {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .stone.black {
+            background: #000;
+            border: 2px solid #333;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .stone.white {
+            background: #ffffff;
+            border: 2px solid #999;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .last-move {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: red;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+
+        .mine-marker {
+            position: absolute;
+            font-size: 16px;
+            opacity: 0.3;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .restart-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .move-btn {
+            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+            color: white;
+        }
+
+        .move-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .move-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .cancel-btn {
+            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+            color: white;
+        }
+
+        .cancel-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #607d8b 0%, #455a64 100%);
+            color: white;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(96, 125, 139, 0.4);
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .move-info {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .mine-info {
+            text-align: center;
+            margin-top: 10px;
+            color: #ff4444;
+            font-size: 12px;
+            background: #fff3f3;
+            padding: 8px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 600px) {
+            .cell {
+                width: 22px;
+                height: 22px;
+            }
+
+            .stone {
+                width: 18px;
+                height: 18px;
+            }
+
+            .start-page, .game-page {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .status {
+                font-size: 16px;
+                padding: 10px;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+
+            .start-title {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 开始页面 -->
+    <div class="start-page" id="startPage">
+        <div class="start-title">🎮 五子棋</div>
+        <div class="start-subtitle">选择游戏模式</div>
+        
+        <div class="mode-cards">
+            <div class="mode-card normal" onclick="startGame('normal')">
+                <div class="mode-title">⚔️ 基础模式</div>
+                <div class="mode-desc">
+                    趣味五子棋玩法<br>
+                    • 每方各3次挪动对方棋子机会<br>
+                    • 黑方先行，五子连珠获胜
+                </div>
+            </div>
+            
+            <div class="mode-card crazy" onclick="startGame('crazy')">
+                <div class="mode-title">💣 恶心模式</div>
+                <div class="mode-desc">
+                    超级混乱的玩法<br>
+                    • 每方各3次挪动对方棋子机会<br>
+                    • ⚠️ 每次下棋都可能触发地雷！<br>
+                    • 触发地雷会炸掉棋子！
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏页面 -->
+    <div class="game-page" id="gamePage">
+        <h1>🎮 五子棋</h1>
+        <div class="status black-turn" id="status">⚫ 黑方回合</div>
+
+        <div class="board-container">
+            <div class="board">
+                <div class="board-grid" id="board"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="move-btn" id="moveBtn" onclick="toggleMoveMode()">🔄 挪动</button>
+            <button class="cancel-btn" id="cancelBtn" onclick="cancelMoveMode()" style="display:none;">❌ 取消</button>
+            <button class="restart-btn" onclick="restartGame()">🔄 重新开始</button>
+            <button class="back-btn" onclick="backToMenu()">🏠 返回</button>
+        </div>
+
+        <div class="move-info" id="moveInfo">
+            ⚫ 黑方挪动次数: 3 | ⚪ 白方挪动次数: 3
+        </div>
+
+        <div class="mine-info" id="mineInfo">
+            ⚠️ 警告：此模式包含随机地雷陷阱！
+        </div>
+
+        <div class="info" id="modeInfo">双人对战模式 - 黑方先行</div>
+    </div>
+
+    <script>
+        const SIZE = 15;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        let board = [];
+        let currentPlayer = BLACK;
+        let gameOver = false;
+        let lastMove = null;
+        let gameMode = 'normal';
+        
+        // 挪动相关状态
+        let moveMode = false;
+        let moveCount = { [BLACK]: 3, [WHITE]: 3 };
+        let selectedStone = null;
+
+        // 地雷相关（恶心模式）
+        const MINE_PROBABILITY = 20 / (SIZE * SIZE); // 地雷概率：20/225 ≈ 8.9%
+
+        // 音频上下文
+        let audioContext = null;
+
+        // 初始化音频上下文
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 播放下棋音效
+        function playPlaceStoneSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 400 + Math.random() * 100;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.15);
+        }
+
+        // 播放选择音效
+        function playSelectSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 600;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        // 播放移动音效
+        function playMoveSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'triangle';
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // 播放爆炸音效
+        function playExplosionSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 100;
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.6);
+        }
+
+        // 播放胜利音效
+        function playWinSound() {
+            initAudio();
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            const duration = 0.3;
+            
+            notes.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = freq;
+                oscillator.type = 'sine';
+                
+                const startTime = audioContext.currentTime + index * duration;
+                gainNode.gain.setValueAtTime(0.3, startTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration * 0.8);
+                
+                oscillator.start(startTime);
+                oscillator.stop(startTime + duration);
+            });
+        }
+
+        // 播放平局音效
+        function playDrawSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 300;
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // 检查是否触发地雷（每次下棋时随机判定）
+        function checkMineTriggered() {
+            return Math.random() < MINE_PROBABILITY;
+        }
+
+        // 开始游戏
+        function startGame(mode) {
+            gameMode = mode;
+            document.getElementById('startPage').style.display = 'none';
+            document.getElementById('gamePage').style.display = 'block';
+            
+            if (mode === 'normal') {
+                moveCount = { [BLACK]: 3, [WHITE]: 3 };
+                document.getElementById('modeInfo').textContent = '基础模式 - 黑方先行';
+                document.getElementById('mineInfo').style.display = 'none';
+            } else if (mode === 'crazy') {
+                moveCount = { [BLACK]: 3, [WHITE]: 3 };
+                document.getElementById('modeInfo').textContent = '💣 恶心模式 - 黑方先行';
+                document.getElementById('mineInfo').style.display = 'block';
+                initMines();
+            }
+            
+            initBoard();
+            updateMoveInfo();
+        }
+
+        // 返回菜单
+        function backToMenu() {
+            document.getElementById('gamePage').style.display = 'none';
+            document.getElementById('startPage').style.display = 'block';
+        }
+
+        function initBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            board = [];
+
+            for (let i = 0; i < SIZE; i++) {
+                board[i] = [];
+                for (let j = 0; j < SIZE; j++) {
+                    board[i][j] = EMPTY;
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.onclick = () => handleMove(i, j);
+                    boardElement.appendChild(cell);
+                }
+            }
+
+            currentPlayer = BLACK;
+            gameOver = false;
+            lastMove = null;
+            moveMode = false;
+            selectedStone = null;
+            
+            updateStatus('⚫ 黑方回合', 'black-turn');
+            document.getElementById('moveBtn').style.display = 'inline-block';
+            document.getElementById('cancelBtn').style.display = 'none';
+        }
+
+        function handleMove(row, col) {
+            if (gameOver) return;
+
+            if (moveMode) {
+                handleMoveMode(row, col);
+                return;
+            }
+
+            if (board[row][col] !== EMPTY) return;
+
+            board[row][col] = currentPlayer;
+            lastMove = { row, col };
+            playPlaceStoneSound();
+
+            renderBoard();
+
+            // 检查地雷（恶心模式）- 每次下棋随机触发
+            if (gameMode === 'crazy' && checkMineTriggered()) {
+                setTimeout(() => {
+                    triggerExplosion(row, col);
+                }, 300);
+                return;
+            }
+
+            if (checkWin(row, col)) {
+                gameOver = true;
+                const winner = currentPlayer === BLACK ? '⚫ 黑方' : '⚪ 白方';
+                updateStatus('🎉 ' + winner + ' 获胜！', 'winner');
+                playWinSound();
+                return;
+            }
+
+            if (checkDraw()) {
+                gameOver = true;
+                updateStatus('🤝 平局！', 'winner');
+                playDrawSound();
+                return;
+            }
+
+            switchPlayer();
+        }
+
+        // 触发爆炸
+        function triggerExplosion(row, col) {
+            const player = board[row][col];
+            const playerName = player === BLACK ? '黑方' : '白方';
+            
+            // 清除棋子
+            board[row][col] = EMPTY;
+            lastMove = null;
+            
+            playExplosionSound();
+            updateStatus('💥 ' + playerName + ' 触发地雷！棋子被炸飞！', 'explosion');
+            
+            // 标记已爆炸的格子
+            renderBoard();
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                if (parseInt(cell.dataset.row) === row && parseInt(cell.dataset.col) === col) {
+                    cell.classList.add('exploded');
+                }
+            });
+            
+            // 延迟后切换玩家
+            setTimeout(() => {
+                switchPlayer();
+            }, 1000);
+        }
+
+        function toggleMoveMode() {
+            if (gameOver) return;
+            
+            if (moveCount[currentPlayer] <= 0) {
+                alert((currentPlayer === BLACK ? '黑方' : '白方') + ' 没有挪动次数了！');
+                return;
+            }
+
+            moveMode = true;
+            selectedStone = null;
+            playSelectSound();
+            updateStatus('🎯 ' + (currentPlayer === BLACK ? '黑方' : '白方') + ' 挪动模式: 选择对方棋子', 'move-mode');
+            document.getElementById('moveBtn').style.display = 'none';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            renderBoard();
+        }
+
+        function cancelMoveMode() {
+            moveMode = false;
+            selectedStone = null;
+            updateStatus(
+                currentPlayer === BLACK ? '⚫ 黑方回合' : '⚪ 白方回合',
+                currentPlayer === BLACK ? 'black-turn' : 'white-turn'
+            );
+            document.getElementById('moveBtn').style.display = 'inline-block';
+            document.getElementById('cancelBtn').style.display = 'none';
+            renderBoard();
+        }
+
+        function handleMoveMode(row, col) {
+            const opponent = currentPlayer === BLACK ? WHITE : BLACK;
+
+            if (selectedStone === null) {
+                if (board[row][col] === opponent) {
+                    selectedStone = { row, col };
+                    playSelectSound();
+                    renderBoard();
+                } else if (board[row][col] === EMPTY) {
+                    alert('请先选择要挪动的对方棋子！');
+                } else {
+                    alert('不能移动自己的棋子！');
+                }
+                return;
+            }
+
+            if (selectedStone !== null) {
+                if (board[row][col] !== EMPTY) {
+                    if (board[row][col] === opponent) {
+                        selectedStone = { row, col };
+                        playSelectSound();
+                        renderBoard();
+                    } else {
+                        alert('请选择一个空位！');
+                    }
+                    return;
+                }
+
+                board[row][col] = opponent;
+                board[selectedStone.row][selectedStone.col] = EMPTY;
+                moveCount[currentPlayer]--;
+                
+                lastMove = { row, col };
+                moveMode = false;
+                selectedStone = null;
+                
+                playMoveSound();
+                
+                document.getElementById('moveBtn').style.display = 'inline-block';
+                document.getElementById('cancelBtn').style.display = 'none';
+                
+                renderBoard();
+                updateMoveInfo();
+
+                if (checkWin(row, col)) {
+                    gameOver = true;
+                    const winner = currentPlayer === BLACK ? '⚪ 白方' : '⚫ 黑方';
+                    updateStatus('🎉 ' + winner + ' 获胜！', 'winner');
+                    playWinSound();
+                    return;
+                }
+
+                if (checkDraw()) {
+                    gameOver = true;
+                    updateStatus('🤝 平局！', 'winner');
+                    playDrawSound();
+                    return;
+                }
+
+                switchPlayer();
+            }
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
+            updateStatus(
+                currentPlayer === BLACK ? '⚫ 黑方回合' : '⚪ 白方回合',
+                currentPlayer === BLACK ? 'black-turn' : 'white-turn'
+            );
+            updateMoveInfo();
+        }
+
+        function checkWin(row, col) {
+            const directions = [
+                [[0, 1], [0, -1]],
+                [[1, 0], [-1, 0]],
+                [[1, 1], [-1, -1]],
+                [[1, -1], [-1, 1]]
+            ];
+
+            const player = board[row][col];
+
+            for (const [dir1, dir2] of directions) {
+                let count = 1;
+                count += countInDirection(row, col, dir1[0], dir1[1], player);
+                count += countInDirection(row, col, dir2[0], dir2[1], player);
+
+                if (count >= 5) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function countInDirection(row, col, dRow, dCol, player) {
+            let count = 0;
+            let r = row + dRow;
+            let c = col + dCol;
+
+            while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && board[r][c] === player) {
+                count++;
+                r += dRow;
+                c += dCol;
+            }
+
+            return count;
+        }
+
+        function checkDraw() {
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    if (board[i][j] === EMPTY) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function renderBoard() {
+            const cells = document.querySelectorAll('.cell');
+            const opponent = currentPlayer === BLACK ? WHITE : BLACK;
+
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                cell.className = 'cell';
+
+                if (moveMode) {
+                    if (selectedStone && selectedStone.row === row && selectedStone.col === col) {
+                        cell.classList.add('selected');
+                    } else if (board[row][col] === opponent) {
+                        cell.classList.add('selectable');
+                    } else if (selectedStone && board[row][col] === EMPTY) {
+                        cell.classList.add('move-target');
+                    }
+                }
+
+                cell.innerHTML = '';
+
+                if (board[row][col] !== EMPTY) {
+                    const stone = document.createElement('div');
+                    stone.className = 'stone ' + (board[row][col] === BLACK ? 'black' : 'white');
+                    cell.appendChild(stone);
+                    cell.classList.add('disabled');
+
+                    if (lastMove && lastMove.row === row && lastMove.col === col) {
+                        const marker = document.createElement('div');
+                        marker.className = 'last-move';
+                        cell.appendChild(marker);
+                    }
+                }
+            });
+        }
+
+        function updateStatus(text, className) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = 'status ' + className;
+        }
+
+        function updateMoveInfo() {
+            const moveInfo = document.getElementById('moveInfo');
+            moveInfo.textContent = '⚫ 黑方挪动次数: ' + moveCount[BLACK] + ' | ⚪ 白方挪动次数: ' + moveCount[WHITE];
+        }
+
+        function restartGame() {
+            moveCount = { [BLACK]: 3, [WHITE]: 3 };
+            initBoard();
+            updateMoveInfo();
+        }
+    </script>
+</body>
+</html>
